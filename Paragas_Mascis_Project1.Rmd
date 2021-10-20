@@ -1,0 +1,260 @@
+---
+title: "CMDA-4654"
+subtitle: "Project 1"
+author: "Spencer Paragas and Chris Mascis"
+date: "10/19/2021"
+output:
+  pdf_document:
+    highlight: haddock
+keep_tex: no
+number_sections: no
+html_document:
+  df_print: paged
+geometry: margin = 0.5in
+header-includes:
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{pdflscape}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{threeparttablex}
+- \usepackage[normalem]{ulem}
+- \usepackage{makecell}
+- \usepackage{xcolor}
+editor_options:
+  chunk_output_type: console
+documentclass: article
+urlcolor: blue
+---
+  
+<!-- The above is set to automatically compile to a .pdf file.   -->
+<!-- It will only succeed if LaTeX is installed. -->
+  
+<!-- If you absolutely can't get LaTeX installed and/or working, then you can compile to a .html first,  -->
+<!-- by clicking on the arrow button next to knit and selecting Knit to HTML. -->
+
+<!-- You must then print you .html file to a .pdf by using first opening it in a web browser and then printing to a .pdf -->
+
+
+```{r setup, include=FALSE}
+# This is the setup chunk
+#  Here you can set global options for the entire document
+
+library(knitr) # I recommend doing this here
+
+# Although you can call functions from a library using the following notation
+#  without loading the entire library.
+knitr::opts_chunk$set(echo = TRUE, 
+                      comment = NA, # Required
+                      fig.path = "./figures/",  # Store all figures here in relative path (make the folder first)
+                      fig.align = "center",
+                      fig.width = 7,
+                      fig.height = 7,
+                      message = FALSE, # Turn off load messages
+                      warning = FALSE # Turn off warnings
+                      )
+
+```
+
+\clearpage
+
+```{r include=FALSE}
+# You should not echo this chunk.
+# include=FALSE does more than echo=FALSE, it actually does: echo=FALSE, results='hide', message=FALSE, warning=FALSE, fig.show='hide'
+
+# You should set your working directory at the very beginning of your R Markdown file
+# setwd("~/Dropbox/teaching/FA2020/CMDA_4654/homework/homework1/")
+
+# In linux ~/ is shorthand for /home/username/
+# You should type things out properly for your system
+# Mac: /Users/username/Documents/CMDA4654/Lectures/Lecture_03/.../
+# Windows: C:/Users/username/Documents/etc/Lecture/Lecture_03/.../
+
+
+```
+
+<!-- ---------------------------------------------------------------------------------------------------- -->
+<!-- ---------------- Project Problems start below these lines ----------------------------------------- -->
+<!-- ---------------------------------------------------------------------------------------------------- -->
+
+
+# Problem 1
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+setwd("C:/Users/Spencer/Downloads")
+load("ozone.RData")
+
+ggplot(ozone, aes(x = temperature, y = ozone)) + theme_bw() + geom_point()
+```
+
+
+## Part a
+
+Fitting polynomials of different degrees
+
+```{r}
+model1 <- lm(ozone ~ poly(radiation,1), data = ozone)
+model2 <- lm(ozone ~ poly(radiation,2), data = ozone)
+model3 <- lm(ozone ~ poly(radiation,3), data = ozone)
+model4 <- lm(ozone ~ poly(radiation,4), data = ozone)
+model5 <- lm(ozone ~ poly(radiation,5), data = ozone)
+model6 <- lm(ozone ~ poly(radiation,6), data = ozone)
+
+summary(model1)
+summary(model2)
+summary(model3)
+summary(model4)
+summary(model5)
+summary(model6)
+```
+
+
+The polynomial fit that appears to work the best is the one with degree 3.
+
+
+## Part b
+
+Writing the function that carries out LOESS regression
+
+```{r}
+myloess <- function(x, y, span = 0.5, degree = 1, show.plot = TRUE) {
+  
+  # Getting range of values
+  xrange <- diff(range(x))
+  
+  # Checking span meets requirements and setting width
+  if (between(span, 0, 1)) {
+    width <- span*xrange
+  }
+  else {
+    stop("Span must be between 0 and 1 non-inclusive")
+  }
+  
+  # Getting total number of points and windows (they'll be the same)
+  N_total <- length(x)
+  Win_total <- length(x)
+  
+  # Allocating space for vector of each window's population
+  n_points <- vector(mode = "integer", length = length(x))
+  
+  # Allocating space for vector of fitted values
+  yhat <- vector(mode = "numeric", length = length(x))
+  
+  # Combining our variables in data frame
+  mydata <- cbind.data.frame(x, y)
+  
+  # Fitting each point
+  for(x0 in x) {
+    
+    # Setting population of window
+    sample <- subset(mydata, between(x, x0-width/2, x0+width/2))
+    n <- length(sample[,1])
+    
+    # Getting weights into diagonal matrix
+    weights <- (1-(abs(sample[,1] - x0)/width*2)^3)^3
+    W_mat <- diag(weights, n, n)
+    
+    # Checking degree and completing our regression accordingly
+    if (degree == 1) {
+      
+      X_mat <- cbind(rep(1, n), sample[,1])
+      betahat <- solve( t(X_mat)%*%W_mat%*%X_mat ) %*% t(X_mat) %*% W_mat %*% sample[,2]
+      
+      # Getting fitted value
+      yhat[which(x0 == x)] <-  betahat[1] + betahat[2]*x0
+    }
+    else if (degree == 2) {
+      
+      X_mat <- cbind(rep(1, n), sample[,1], sample[,1]^2)
+      betahat <- solve( t(X_mat)%*%W_mat%*%X_mat ) %*% t(X_mat) %*% W_mat %*% sample[,2]
+      
+      # Getting fitted value
+      yhat[which(x0 == x)] <-  betahat[1] + betahat[2]*x0 + betahat[3]*x0^2
+    }
+    else {
+      stop("Degree must be set to either 1 or 2")
+    }
+    
+    # Getting population of window
+    n_points[which(x0 == x)] <- n
+  }
+  
+  # Calculating SSE, MSE, and residual standard error
+  SSE <- sum((y-yhat)^{2})
+  MSE <- SSE/(N_total-2)
+  RSE <- sqrt(MSE)
+  
+  # Creating plot of final fit
+  loessplot <- ggplot(mydata, aes(x, y)) +
+    geom_point(size = 3, alpha = 0.5, color = "grey") +
+    geom_line(aes(x, yhat), color = "red", lty = 1) +
+    xlab(deparse(substitute(x))) + ylab(deparse(substitute(y)))
+  
+  # Checking whether to show plot or not
+  if (show.plot == T) {
+    print(loessplot)
+  }
+  
+  # Returning named list
+  return(invisible(list(span = span, degree = degree, N_total = N_total, Win_total = Win_total,
+              n_points = n_points, SSE = SSE, RSE = RSE, loessplot = loessplot)))
+}
+```
+
+
+Determining LOESS regression fits on the data
+
+```{r}
+# Creating an empty data frame
+fit_table <- data.frame()
+
+# Determining fits and putting info into data frame
+for(j in 1:2) {
+  for (i in seq(0.25, 0.75, by = 0.05)) {
+    fit_table <- rbind(fit_table, c(i, j, myloess(ozone$temperature, ozone$ozone,
+                                                  span = i, degree = j, show.plot = F)$RSE))
+  }
+}
+
+# Changing column names
+colnames(fit_table) <- c("Span", "Degree", "RSE")
+
+# Displaying data frame
+fit_table
+```
+
+
+
+
+
+
+
+
+```{r}
+myfit <- myloess(ozone$temperature, ozone$ozone, span = 0.75, degree = 2)
+
+for (i in seq(0.25, 0.75, by = 0.05)) {
+  print(loess(ozone ~ temperature, ozone, span = i)$s)
+}
+loess(ozone ~ temperature, ozone, span = 0.75)$fit
+
+```
+
+
+```{r pressure, echo=FALSE}
+ozone %>% ggplot(aes(temperature, ozone)) +
+  geom_point() +
+  geom_smooth(method = "loess", span = 0.5, method.args = list(degree=1))
+
+ozone %>% ggplot(aes(temperature, ozone)) +
+  geom_point() +
+  geom_smooth(se = F)
+```
