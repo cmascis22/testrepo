@@ -1,7 +1,7 @@
 ---
 title: "CMDA-4654"
 subtitle: "Project 1"
-author: "Spencer Paragas and Chris Mascis"
+author: "Spencer Paragas and Christopher Mascis"
 date: "10/19/2021"
 output:
   pdf_document:
@@ -196,7 +196,8 @@ myloess <- function(x, y, span = 0.5, degree = 1, show.plot = TRUE) {
   loessplot <- ggplot(mydata, aes(x, y)) +
     geom_point(size = 3, alpha = 0.5, color = "grey") +
     geom_line(aes(x, yhat), color = "red", lty = 1) +
-    xlab(deparse(substitute(x))) + ylab(deparse(substitute(y)))
+    xlab(deparse(substitute(x))) + ylab(deparse(substitute(y))) +
+    ggtitle(paste("LOESS with degree =", degree,"and span =", span, sep = " "))
   
   # Checking whether to show plot or not
   if (show.plot == T) {
@@ -208,6 +209,8 @@ myloess <- function(x, y, span = 0.5, degree = 1, show.plot = TRUE) {
               n_points = n_points, SSE = SSE, RSE = RSE, loessplot = loessplot)))
 }
 ```
+
+
 
 
 Determining LOESS regression fits on the data
@@ -232,29 +235,132 @@ fit_table
 ```
 
 
+The three "best" fits with degree 1 appear to be span 0.25, 0.30, and 0.40. The three "best" fits with degree 2 appear to be span 0.25, 0.30, and 0.35.
 
 
 
 
-
+Plotting the best fits found above
 
 ```{r}
-myfit <- myloess(ozone$temperature, ozone$ozone, span = 0.75, degree = 2)
+myloess(ozone$temperature, ozone$ozone,
+                                                  span = 0.25, degree = 1, show.plot = F)$loessplot
+myloess(ozone$temperature, ozone$ozone,
+                                                  span = 0.30, degree = 1, show.plot = F)$loessplot
+myloess(ozone$temperature, ozone$ozone,
+                                                  span = 0.40, degree = 1, show.plot = F)$loessplot
+myloess(ozone$temperature, ozone$ozone,
+                                                  span = 0.25, degree = 2, show.plot = F)$loessplot
+myloess(ozone$temperature, ozone$ozone,
+                                                  span = 0.30, degree = 2, show.plot = F)$loessplot
+myloess(ozone$temperature, ozone$ozone,
+                                                  span = 0.35, degree = 2, show.plot = F)$loessplot
+```
 
-for (i in seq(0.25, 0.75, by = 0.05)) {
-  print(loess(ozone ~ temperature, ozone, span = i)$s)
+
+Visually inspecting the best fits compared to the 2nd and 3rd best fits, we do feel we may have over-fit the data, especially for the fits with degree 2. The model with degree 1 and span 0.4 appears to be the "best" fit.
+
+
+## Part c
+
+Comparing results with built-in LOESS function
+
+```{r}
+ozone %>% ggplot(aes(temperature, ozone)) +
+  geom_point() +
+  geom_smooth(method = "loess", degree = 1, span = 0.40, se = F, method.args = list(degree=1))
+```
+
+
+The built-in LOESS function results in a fit that does not over-fit the data, but we feel our model provides the better fit.
+
+
+# Problem 2
+
+```{r}
+library(MASS)
+data("mcycle")
+
+ggplot(mcycle, aes(x = times, y = accel)) + theme_bw() + geom_point()
+```
+
+
+## Part a
+
+Determining LOESS regression fits on the data
+
+```{r}
+# Creating an empty data frame
+fit_table2 <- data.frame()
+
+# Determining fits and putting info into data frame
+for(j in 1:2) {
+  for (i in seq(0.25, 0.75, by = 0.05)) {
+    fit_table2 <- rbind(fit_table2, c(i, j, myloess(mcycle$times, mcycle$accel,
+                                                  span = i, degree = j, show.plot = F)$RSE))
+  }
 }
-loess(ozone ~ temperature, ozone, span = 0.75)$fit
 
+# Changing column names
+colnames(fit_table2) <- c("Span", "Degree", "RSE")
+
+# Displaying data frame
+fit_table2
 ```
 
 
-```{r pressure, echo=FALSE}
-ozone %>% ggplot(aes(temperature, ozone)) +
-  geom_point() +
-  geom_smooth(method = "loess", span = 0.5, method.args = list(degree=1))
+The three "best" fits with degree 1 appear to be span 0.25, 0.30, and 0.35. The three "best" fits with degree 2 appear to be span 0.25, 0.30, and 0.35.
 
-ozone %>% ggplot(aes(temperature, ozone)) +
-  geom_point() +
-  geom_smooth(se = F)
+
+
+
+Plotting the best fits found above
+
+```{r}
+myloess(mcycle$times, mcycle$accel,
+                                                  span = 0.25, degree = 1, show.plot = F)$loessplot
+myloess(mcycle$times, mcycle$accel,
+                                                  span = 0.30, degree = 1, show.plot = F)$loessplot
+myloess(mcycle$times, mcycle$accel,
+                                                  span = 0.35, degree = 1, show.plot = F)$loessplot
+myloess(mcycle$times, mcycle$accel,
+                                                  span = 0.25, degree = 2, show.plot = F)$loessplot
+myloess(mcycle$times, mcycle$accel,
+                                                  span = 0.30, degree = 2, show.plot = F)$loessplot
+myloess(mcycle$times, mcycle$accel,
+                                                  span = 0.35, degree = 2, show.plot = F)$loessplot
 ```
+
+
+Visually inspecting the models, we believe that the model with degree 2 and span 0.35 provided the "best" fit.
+
+
+## Part b
+
+Comparing results with built-in LOESS function
+
+```{r}
+mcycle %>% ggplot(aes(times, accel)) +
+  geom_point() +
+  geom_smooth(method = "loess", degree = 2, span = 0.35, se = F, method.args = list(degree=1))
+```
+
+
+The built-in LOESS function results in a fit that does not over-fit the data, but we feel our model provides the better fit.
+
+
+# Problem 3
+
+```{r}
+# Some pre-processing
+library(ISLR)
+# Remove the name of the car model and change the origin to categorical with actual name
+Auto_new <- Auto[, -9]
+# Lookup table
+newOrigin <- c("USA", "European", "Japanese")
+Auto_new$origin <- factor(newOrigin[Auto_new$origin], newOrigin)
+
+# Look at the first 6 observations to see the final version
+head(Auto_new)
+```
+
