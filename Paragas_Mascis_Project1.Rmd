@@ -2,7 +2,7 @@
 title: "CMDA-4654"
 subtitle: "Project 1"
 author: "Spencer Paragas and Christopher Mascis"
-date: "10/19/2021"
+date: "10/31/2021"
 output:
   pdf_document:
     highlight: haddock
@@ -89,7 +89,7 @@ knitr::opts_chunk$set(echo = TRUE,
 library(dplyr)
 library(ggplot2)
 
-setwd("C:/Users/Spencer/Downloads")
+#setwd("C:/Users/Spencer/Downloads")
 load("ozone.RData")
 
 ggplot(ozone, aes(x = temperature, y = ozone)) + theme_bw() + geom_point()
@@ -125,6 +125,17 @@ The polynomial fit that appears to work the best is the one with degree 3.
 Writing the function that carries out LOESS regression
 
 ```{r}
+# This function has the following inputs.
+# 
+# * x - a numeric input vector
+# * y - a numeric response
+#
+# Note span and degree are shown with their default values.
+# * degree should be 1 or 2 only
+# * span can be any value in interval (0, 1) non-inclusive.
+#
+# If show.plot = TRUE then a plot of the final fit is shown
+
 myloess <- function(x, y, span = 0.5, degree = 1, show.plot = TRUE) {
   
   # Getting range of values
@@ -363,4 +374,64 @@ Auto_new$origin <- factor(newOrigin[Auto_new$origin], newOrigin)
 # Look at the first 6 observations to see the final version
 head(Auto_new)
 ```
+
+
+```{r}
+mykNN <- function(train, test, y_train, y_test, k = 3, weighted = TRUE) {
+  
+  yhat <- vector(mode = "numeric", length = length(train))
+  #residuals <- vector(mode = "numeric", length = length(train))
+
+  for(x0 in train) {
+    dist <- (x0 - train)^2
+    weights <- 1/dist
+    a.order <- order(weights, decreasing = T)[-1]
+    last <- weights[a.order[k]]
+    y_train_sub <- y_train[-which(!is.finite(weights))]
+    weights <- weights[-which(!is.finite(weights))]
+    weights[weights < last] <- 0
+    
+    if(weighted == F) {
+      weights[weights != 0] <- 1
+    }
+    
+    tot_weight <- sum(weights)
+    yhat[which(train == x0)] <- sum(weights*y_train/tot_weight)
+  }
+
+  # Calculating SSE, MSE, and residual standard error
+  SSE <- sum((y_train-yhat)^{2})
+  MSE <- SSE/(length(train)-2)
+  RSE <- sqrt(MSE)
+  
+  residuals <- y_train - yhat
+  
+  # Returning named list
+  return(invisible(list(yhat = yhat, residuals = residuals, SSE = SSE, k = k)))
+
+}
+
+```
+
+
+```{r}
+ntrain <- round(nrow(Auto_new)*0.7)
+ntest <- nrow(Auto_new) - ntrain
+train <- Auto_new[1:ntrain,]$weight
+test <- Auto_new[(ntrain+1):nrow(Auto_new),]$weight
+y_train <- Auto_new[1:ntrain,]$mpg
+y_test <- Auto_new[(ntrain+1):nrow(Auto_new),]$mpg
+
+test <- mykNN(train, test, y_train, y_test, k = 5)
+test$yhat
+
+library(class)
+?knn
+
+real <- knn(cbind(train, y_train), cbind(test, y_test), k = 3)
+```
+
+
+
+
 
