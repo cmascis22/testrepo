@@ -379,8 +379,7 @@ head(Auto_new)
 ```{r}
 library(caret)
 
-# This function will have the following inputs similar to what you would find with the
-#  knn() function
+# This function has the following inputs
 #
 # * train - matrix or data frame of training set cases
 # * test - matrix or data frame of test set cases.  
@@ -389,24 +388,35 @@ library(caret)
 # * y_test - Either a numeric vector, or factor vector for the responses in the testing set
 # * k - number of neighbors considered, the default value is 3
 #
-# If weighted = TRUE, then your function must used the distance weighted kNN as described above,
-#  otherwise it should do the default knn method.
+# If weighted = TRUE, then function uses the distance weighted kNN,
+#  otherwise it does the default kNN method.
 
 mykNN <- function(train, test, y_train, y_test, k = 3, weighted = TRUE) {
   
+  # Allocating space for vector of fitted values
   yhat <- vector(mode = "numeric", length = length(y_test))
   
+  # Fitting each point
   for (row in 1:nrow(test)) {
+    
+    # Getting features
     x0 <- test[row,]
+    
+    # Getting Euclidean distance and weights
     distmat <- as.matrix(dist(rbind(x0, train), method = "euclidean", diag = T, upper = T))
     dist <- distmat[1,]
     weights <- 1/dist
+    
+    # Getting kth nearest neighbor
     a.order <- order(weights, decreasing = T)[-1]
     last <- weights[a.order[k]]
+    
+    # Setting weights to 0 except for kNN
     y_train_sub <- y_train[-which(!is.finite(weights))]
     weights <- weights[-which(!is.finite(weights))]
     weights[weights < last] <- 0
     
+    # Handling 
     if(weighted == F) {
       weights[weights != 0] <- 1
     }
@@ -471,7 +481,8 @@ test <- Auto_new[(ntrain+1):nrow(Auto_new),1:7]
 y_train <- Auto_new[1:ntrain,8]
 y_test <- Auto_new[(ntrain+1):nrow(Auto_new),8]
 
-trial2 <- mykNN2(train, test, y_train, y_test, k = 3)
+trial2 <- mykNN(train, test, y_train, y_test, k = 3)
+trial2
 trial2$residuals
 #ncol(train)
 
@@ -482,12 +493,12 @@ trial2$SSE
 library(class)
 
 
-real <- knn(train, test, y_train, k = 3)
+#real <- knn(train, test, y_train, k = 3)
 ```
 
 
 ```{r}
-ozone4 <- as.data.frame(lapply(ozone[,3], nor))
+"ozone4 <- as.data.frame(lapply(ozone[,3], nor))
 ozone4 <- cbind(ozone4, ozone$ozone)
 index <- sample(1:nrow(ozone4), round(nrow(ozone4) * 0.7))
 training_df <- ozone4[index, ]
@@ -498,7 +509,7 @@ y_train <- training_df[,2]
 y_test <- testing_df[,2]
 
 trial2 <- mykNN2(train, test, y_train, y_test, k = 3)
-trial2$residuals
+trial2$residuals"
 ```
 
 
