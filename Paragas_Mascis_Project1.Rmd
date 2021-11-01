@@ -416,58 +416,78 @@ mykNN <- function(train, test, y_train, y_test, k = 3, weighted = TRUE) {
     weights <- weights[-which(!is.finite(weights))]
     weights[weights < last] <- 0
     
-    # Handling 
+    # Handling unweighted case
     if(weighted == F) {
       weights[weights != 0] <- 1
     }
     
     tot_weight <- sum(weights)
     
-    class <- vector(mode = "numeric", length = nlevels(y_test))
-    
+    # Handling classification
     if (is.factor(y_train)) {
+      
+      # Allocating space for vector of class weights
+      class <- vector(mode = "numeric", length = nlevels(y_test))
+      
+      # Summing weights for each class
       for (i in 1:nlevels(y_test)) {
         class[i] <- sum(weights[which(y_train == levels(y_test)[i])])
       }
+      
+      # Assigning factor with highest class weight to yhat
       yhat[row] <- levels(y_test)[which(class == max(class))]
     }
+    
+    # Handling regression
     else {
+      
+      # Calculating yhat
       yhat[row] <- sum(weights*y_train/tot_weight)
     }
   }
 
+  # Handling classification
   if (is.factor(y_train)) {
+    
     yhat <- factor(yhat)
     
+    # Setting number of correct predictions to 0
     num_correct <- 0
   
+    # Getting number of correct predictions
     for (j in 1:length(yhat)) {
+      
+      # Checking if classes match
       if (y_test[j] == yhat[j]) {
+        
         num_correct <- num_correct + 1
       }
     }
+    
+    # Calculating accuracy and error rate
     accuracy <- num_correct / length(yhat)
     error_rate <- 1 - accuracy
   
+    # Getting confusion matrix
     confmat <- confusionMatrix(yhat, y_test)
     
+    # Returning named list
     return(invisible(list(yhat = yhat, accuracy = accuracy,
                           error_rate = error_rate, confmat = confmat, k = k)))
   }
   
+  # Handling regression
   else {
     
-    # Calculating SSE, MSE, and residual standard error
-    SSE <- sum((y_test-yhat)^{2})
+    # Calculating residuals, SSE, MSE, and residual standard error
+    residuals <- y_test - yhat
+    SSE <- sum(residuals^{2})
     MSE <- SSE/(nrow(test)-2)
     RSE <- sqrt(MSE)
-  
-    residuals <- y_test - yhat
-  
+    
     # Returning named list
     return(invisible(list(yhat = yhat, residuals = residuals, SSE = SSE, k = k)))
   }
-  
 }
 ```
 
