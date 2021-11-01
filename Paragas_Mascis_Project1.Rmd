@@ -376,6 +376,8 @@ head(Auto_new)
 ```
 
 
+Writing the function that carries out kNN classification and regression
+
 ```{r}
 library(caret)
 
@@ -492,6 +494,7 @@ mykNN <- function(train, test, y_train, y_test, k = 3, weighted = TRUE) {
 ```
 
 
+Splitting data into training data and testing data
 
 ```{r}
 ntrain <- round(nrow(Auto_new)*0.7)
@@ -500,37 +503,74 @@ train <- Auto_new[1:ntrain,1:7]
 test <- Auto_new[(ntrain+1):nrow(Auto_new),1:7]
 y_train <- Auto_new[1:ntrain,8]
 y_test <- Auto_new[(ntrain+1):nrow(Auto_new),8]
-
-trial2 <- mykNN(train, test, y_train, y_test, k = 3)
-trial2
-trial2$residuals
-#ncol(train)
-
-y_test
-trial2$SSE
+```
 
 
-library(class)
+Determining accuracy of kNN function on the data
+
+```{r}
+# Creating an empty data frame
+acc_table <- data.frame()
+
+# Determining fits and putting info into data frame
+for (i in c(1, 3, 5, 10, 20)) {
+  acc_table <- rbind(acc_table, c("False", i, mykNN(train, test, y_train, y_test, k = i, weighted = F)$accuracy))
+  acc_table <- rbind(acc_table, c("True", i, mykNN(train, test, y_train, y_test, k = i)$accuracy))
+}
+
+# Changing column names
+colnames(acc_table) <- c("Weighted", "k", "Accuracy")
+
+# Displaying data frame
+acc_table
+
+# Displaying confusion matrix of best fit
+best <- mykNN(train, test, y_train, y_test, k = 9, weighted = F)
+best$confmat
+```
 
 
-#real <- knn(train, test, y_train, k = 3)
+# Problem 4
+
+## Part a
+
+```{r}
+ntrain <- round(nrow(ozone)*0.63)
+ntest <- nrow(ozone) - ntrain
+train <- ozone[1:ntrain,3]
+test <- ozone[(ntrain+1):nrow(ozone),3]
+y_train <- ozone[1:ntrain,1]
+y_test <- ozone[(ntrain+1):nrow(ozone),1]
 ```
 
 
 ```{r}
-"ozone4 <- as.data.frame(lapply(ozone[,3], nor))
-ozone4 <- cbind(ozone4, ozone$ozone)
-index <- sample(1:nrow(ozone4), round(nrow(ozone4) * 0.7))
-training_df <- ozone4[index, ]
-testing_df <- ozone4[-index, ]
-train <- training_df[, 1]
-test <- testing_df[, 1]
-y_train <- training_df[,2]
-y_test <- testing_df[,2]
+'# Creating an empty data frame
+acc_table2 <- data.frame()
 
-trial2 <- mykNN2(train, test, y_train, y_test, k = 3)
-trial2$residuals"
+# Determining fits and putting info into data frame
+for (i in c(1, 3, 5, 10, 20)) {
+  acc_table2 <- rbind(acc_table2, c("False", i, mykNN(train, test, y_train, y_test, k = i, weighted = F)$SSE))
+  acc_table2 <- rbind(acc_table2, c("True", i, mykNN(train, test, y_train, y_test, k = i)$SSE))
+}
+
+# Changing column names
+colnames(acc_table2) <- c("Weighted", "k", "SSE")
+
+# Displaying data frame
+acc_table2'
 ```
+
+
+## Part b
+
+```{r}
+'best <- mykNN(train, test, y_train, y_test, k = 1)'
+```
+
+
+
+
 
 
 
