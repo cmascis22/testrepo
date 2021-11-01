@@ -383,7 +383,7 @@ mykNN <- function(train, test, y_train, y_test, k = 3, weighted = TRUE) {
   #residuals <- vector(mode = "numeric", length = length(train))
 
   for(x0 in train) {
-    dist <- (x0 - train)^2
+    dist <- sqrt((x0 - train)^2)
     weights <- 1/dist
     a.order <- order(weights, decreasing = T)[-1]
     last <- weights[a.order[k]]
@@ -411,24 +411,80 @@ mykNN <- function(train, test, y_train, y_test, k = 3, weighted = TRUE) {
 
 }
 
+?norm
 ```
+
+```{r}
+mykNN2 <- function(train, test, y_train, y_test, k = 3, weighted = TRUE) {
+  
+  yhat <- vector(mode = "numeric", length = length(train))
+
+  dist <- dist(train, method = "euclidean")
+  
+  for (row in 1:nrow(train)) {
+    x0 <- train[row,]
+    
+    
+  }
+    #dist <- (x0 - train)^2
+    #weights <- 1/dist
+    #a.order <- order(weights, decreasing = T)[-1]
+    #last <- weights[a.order[k]]
+    #y_train_sub <- y_train[-which(!is.finite(weights))]
+    #weights <- weights[-which(!is.finite(weights))]
+    #weights[weights < last] <- 0
+    
+    #if(weighted == F) {
+      #weights[weights != 0] <- 1
+    #}
+    
+    #tot_weight <- sum(weights)
+    #yhat[which(train == x0)] <- sum(weights*y_train/tot_weight)
+
+  # Calculating SSE, MSE, and residual standard error
+  #SSE <- sum((y_train-yhat)^{2})
+  #MSE <- SSE/(length(train)-2)
+  #RSE <- sqrt(MSE)
+  
+  #residuals <- y_train - yhat
+  
+  # Returning named list
+  return(dist)#invisible(list(yhat = yhat, residuals = residuals, SSE = SSE, k = k)))
+
+}
+```
+
 
 
 ```{r}
 ntrain <- round(nrow(Auto_new)*0.7)
 ntest <- nrow(Auto_new) - ntrain
-train <- Auto_new[1:ntrain,]$weight
-test <- Auto_new[(ntrain+1):nrow(Auto_new),]$weight
-y_train <- Auto_new[1:ntrain,]$mpg
-y_test <- Auto_new[(ntrain+1):nrow(Auto_new),]$mpg
+train <- Auto_new[1:ntrain,5]
+test <- Auto_new[(ntrain+1):nrow(Auto_new),5]
+y_train <- Auto_new[1:ntrain,1]
+y_test <- Auto_new[(ntrain+1):nrow(Auto_new),1]
 
-test <- mykNN(train, test, y_train, y_test, k = 5)
-test$yhat
+train <- as.data.frame(train)
+#test <- as.data.frame(test)
+trial <- mykNN(train, test, y_train, y_test, k = 5)
+trial
+
+
+trial2 <- mykNN2(train, test, y_train, y_test, k = 3)
+trial2
+ncol(train)
+
+
 
 library(class)
 ?knn
 
-real <- knn(cbind(train, y_train), cbind(test, y_test), k = 3)
+real <- knn(train, test, y_train, k = 3)
+
+dim(train)
+length(train)
+real
+?dim
 ```
 
 
