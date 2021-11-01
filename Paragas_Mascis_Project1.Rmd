@@ -377,13 +377,29 @@ head(Auto_new)
 
 
 ```{r}
+library(caret)
+
+# This function will have the following inputs similar to what you would find with the
+#  knn() function
+#
+# * train - matrix or data frame of training set cases
+# * test - matrix or data frame of test set cases.  
+#     (A vector will be interpreted as a row vector for a single case.)
+# * y_train - Either a numeric vector, or factor vector for the responses in the training set
+# * y_test - Either a numeric vector, or factor vector for the responses in the testing set
+# * k - number of neighbors considered, the default value is 3
+#
+# If weighted = TRUE, then your function must used the distance weighted kNN as described above,
+#  otherwise it should do the default knn method.
+
 mykNN <- function(train, test, y_train, y_test, k = 3, weighted = TRUE) {
   
-  yhat <- vector(mode = "numeric", length = length(train))
-  #residuals <- vector(mode = "numeric", length = length(train))
-
-  for(x0 in train) {
-    dist <- sqrt((x0 - train)^2)
+  yhat <- vector(mode = "numeric", length = length(y_test))
+  
+  for (row in 1:nrow(test)) {
+    x0 <- test[row,]
+    distmat <- as.matrix(dist(rbind(x0, train), method = "euclidean", diag = T, upper = T))
+    dist <- distmat[1,]
     weights <- 1/dist
     a.order <- order(weights, decreasing = T)[-1]
     last <- weights[a.order[k]]
@@ -396,61 +412,52 @@ mykNN <- function(train, test, y_train, y_test, k = 3, weighted = TRUE) {
     }
     
     tot_weight <- sum(weights)
-    yhat[which(train == x0)] <- sum(weights*y_train/tot_weight)
+    
+    class <- vector(mode = "numeric", length = nlevels(y_test))
+    
+    if (is.factor(y_train)) {
+      for (i in 1:nlevels(y_test)) {
+        class[i] <- sum(weights[which(y_train == levels(y_test)[i])])
+      }
+      yhat[row] <- levels(y_test)[which(class == max(class))]
+    }
+    else {
+      yhat[row] <- sum(weights*y_train/tot_weight)
+    }
   }
 
-  # Calculating SSE, MSE, and residual standard error
-  SSE <- sum((y_train-yhat)^{2})
-  MSE <- SSE/(length(train)-2)
-  RSE <- sqrt(MSE)
-  
-  residuals <- y_train - yhat
-  
-  # Returning named list
-  return(invisible(list(yhat = yhat, residuals = residuals, SSE = SSE, k = k)))
-
-}
-
-?norm
-```
-
-```{r}
-mykNN2 <- function(train, test, y_train, y_test, k = 3, weighted = TRUE) {
-  
-  yhat <- vector(mode = "numeric", length = length(train))
-
-  dist <- dist(train, method = "euclidean")
-  
-  for (row in 1:nrow(train)) {
-    x0 <- train[row,]
+  if (is.factor(y_train)) {
+    yhat <- factor(yhat)
     
+    num_correct <- 0
+  
+    for (j in 1:length(yhat)) {
+      if (y_test[j] == yhat[j]) {
+        num_correct <- num_correct + 1
+      }
+    }
+    accuracy <- num_correct / length(yhat)
+    error_rate <- 1 - accuracy
+  
+    confmat <- confusionMatrix(yhat, y_test)
     
+    return(invisible(list(yhat = yhat, accuracy = accuracy,
+                          error_rate = error_rate, confmat = confmat, k = k)))
   }
-    #dist <- (x0 - train)^2
-    #weights <- 1/dist
-    #a.order <- order(weights, decreasing = T)[-1]
-    #last <- weights[a.order[k]]
-    #y_train_sub <- y_train[-which(!is.finite(weights))]
-    #weights <- weights[-which(!is.finite(weights))]
-    #weights[weights < last] <- 0
-    
-    #if(weighted == F) {
-      #weights[weights != 0] <- 1
-    #}
-    
-    #tot_weight <- sum(weights)
-    #yhat[which(train == x0)] <- sum(weights*y_train/tot_weight)
-
-  # Calculating SSE, MSE, and residual standard error
-  #SSE <- sum((y_train-yhat)^{2})
-  #MSE <- SSE/(length(train)-2)
-  #RSE <- sqrt(MSE)
   
-  #residuals <- y_train - yhat
+  else {
+    
+    # Calculating SSE, MSE, and residual standard error
+    SSE <- sum((y_test-yhat)^{2})
+    MSE <- SSE/(nrow(test)-2)
+    RSE <- sqrt(MSE)
   
-  # Returning named list
-  return(dist)#invisible(list(yhat = yhat, residuals = residuals, SSE = SSE, k = k)))
-
+    residuals <- y_test - yhat
+  
+    # Returning named list
+    return(invisible(list(yhat = yhat, residuals = residuals, SSE = SSE, k = k)))
+  }
+  
 }
 ```
 
@@ -459,35 +466,40 @@ mykNN2 <- function(train, test, y_train, y_test, k = 3, weighted = TRUE) {
 ```{r}
 ntrain <- round(nrow(Auto_new)*0.7)
 ntest <- nrow(Auto_new) - ntrain
-train <- Auto_new[1:ntrain,5]
-test <- Auto_new[(ntrain+1):nrow(Auto_new),5]
-y_train <- Auto_new[1:ntrain,1]
-y_test <- Auto_new[(ntrain+1):nrow(Auto_new),1]
-
-train <- as.data.frame(train)
-#test <- as.data.frame(test)
-trial <- mykNN(train, test, y_train, y_test, k = 5)
-trial
-
+train <- Auto_new[1:ntrain,1:7]
+test <- Auto_new[(ntrain+1):nrow(Auto_new),1:7]
+y_train <- Auto_new[1:ntrain,8]
+y_test <- Auto_new[(ntrain+1):nrow(Auto_new),8]
 
 trial2 <- mykNN2(train, test, y_train, y_test, k = 3)
-trial2
-ncol(train)
+trial2$residuals
+#ncol(train)
 
+y_test
+trial2$SSE
 
 
 library(class)
-?knn
+
 
 real <- knn(train, test, y_train, k = 3)
-
-dim(train)
-length(train)
-real
-?dim
 ```
 
 
+```{r}
+ozone4 <- as.data.frame(lapply(ozone[,3], nor))
+ozone4 <- cbind(ozone4, ozone$ozone)
+index <- sample(1:nrow(ozone4), round(nrow(ozone4) * 0.7))
+training_df <- ozone4[index, ]
+testing_df <- ozone4[-index, ]
+train <- training_df[, 1]
+test <- testing_df[, 1]
+y_train <- training_df[,2]
+y_test <- testing_df[,2]
+
+trial2 <- mykNN2(train, test, y_train, y_test, k = 3)
+trial2$residuals
+```
 
 
 
