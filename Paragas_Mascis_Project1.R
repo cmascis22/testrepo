@@ -6,7 +6,10 @@
 ##################################### LOESS Regression Function #####################################
 
   
-  
+
+
+library(dplyr)
+library(ggplot2)
 
 # This function has the following inputs.
 # 
